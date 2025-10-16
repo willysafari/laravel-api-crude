@@ -16,4 +16,5 @@ Route::post('/login', [App\Http\Controllers\AuthController::class, 'login'])->na
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
     Route::get('/profile', [App\Http\Controllers\AuthController::class, 'profile'])->name('profile');
+    Route::apiResource('/categories', App\Http\Controllers\BlogCategoryController::class);
 });
