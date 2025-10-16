@@ -108,5 +108,21 @@ class BlogCategoryController extends Controller
     public function destroy(string $id)
     {
         //
+        $category =BlogCategory::find($id);
+
+
+        if(!$category){
+            return response()->json([
+                'status' => 'Error',
+                'message' => 'Category not found',
+            ], 404);
+        }else{
+         BlogCategory::destroy($id);
+
+          return response()->json([
+            'status' => 'suceess',
+              'message' => 'catgeory deleted successfully'
+          ]);
+        }
     }
 }
