@@ -37,6 +37,16 @@ class AuthController extends Controller
         //  'name' => $request->name,
         //     'email' => $request->email,
         //     'password' => bcrypt($request->password),
+
+
+        $imagePath= null;
+        if ($request->hasFile('profile_picture') && $request->File('profile_picture')->isValid()){
+            $file=$request->file('profile_picture');
+            $fileName= time().'_'.$file->getClientOriginalName();
+            $file-> move(public_path('storage/profile'), $fileName);
+            $imagePath = 'storage/profile/'.$fileName;
+        }
+        $data['profile_picture'] = $imagePath;
         $user = User::create($data
            
         );
@@ -65,7 +75,6 @@ class AuthController extends Controller
         }
 
         // check if the user exists
-        // $user = User::where('email', $request->email)->first();
 
         if(Auth::attempt($request->only('email', 'password'))){
             $user = Auth::user();
