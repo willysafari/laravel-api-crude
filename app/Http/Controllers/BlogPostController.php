@@ -82,7 +82,7 @@ class BlogPostController extends Controller
         $data['thumbnail'] = $thumbnailPath ? $thumbnailPath : null;
         $data['excerpt'] = substr($request->input('content'), 0, 100) . '...';
         // validate the role of the user
-        if (Auth::user()->role == 'admin') {
+        if (Auth::user()->role == 'admin' || Auth::user()->role == 'author') {
             $data['status'] = 'published';
             $data['published_at'] = now();
         } else {
@@ -136,43 +136,64 @@ class BlogPostController extends Controller
         if ($validatedData->fails()) {
             return response()->json([
                 'status' => 'failed',
-                'message' => $validatedData->errors()
+                'message' => 'validation error',
+
             ], 422);
         }
         $LoggedInUser = auth()->user();
-        if ($LoggedInUser->id !== $request->input('user_id')) {
-            return response()->json([
-                'status' => 'failed',
-                'message' => 'Unauthorized action admin',
-                'id' => $LoggedInUser->id,
-            ], 403);
-        }
+        // if ($LoggedInUser->id !== $request->integer('user_id')) {
+        //     return response()->json([
+        //         'status' => 'failed',
+        //         'message' => 'Unauthorized action admin',
+        //         'id' => $LoggedInUser->id,
+        //         'request_id' => $request->integer('user_id'),
+        //     ], 403);
+        // }
 
         // check if the category existing the db
-        $categoryExists = BlogCategory::find($request->input('blog_category_id'));
-        if (!$categoryExists) {
+        // $categoryExists = BlogCategory::find($request->blog_category_id);
+        // if (!$categoryExists) {
+        //     return response()->json([
+        //         'status' => 'failed',
+        //         'message' => 'Category does not exist',
+        //         'category_id' => $request->blog_category_id,
+        //     ], 404);
+        // }
+        if ($request->filled('blog_category_id')) {
+            $categoryId = $request->input('blog_category_id');
+            $categoryExists = BlogCategory::find($categoryId);
+            if (!$categoryExists) {
+                return response()->json([
+                    'status' => 'failed',
+                    'message' => 'Category does not exist',
+                    'category_id' => $categoryId,
+                ], 404);
+            }
+        }
+        if ($LoggedInUser->id == $blogPost->user_id || $LoggedInUser->role == 'admin') {
+            $blogPost['title'] = $request->input('title', $blogPost->title);
+            $blogPost['slug'] = Str::slug($request->input('title', $blogPost->title));
+            $blogPost['content'] = $request->input('content', $blogPost->content);
+            $blogPost['user_id'] = $request->input('user_id', $blogPost->user_id);
+            $blogPost['blog_category_id'] = $request->input('blog_category_id', $blogPost->blog_category_id);
+            $blogPost['excerpt'] = substr($blogPost['content'], 0, 100) . '...';
+            $blogPost['status'] = $request->input('status', $blogPost->status);
+            $blogPost->save();
+
+            // rreturn success response
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Blog post updated successfully',
+                'data' => $blogPost
+            ], 200);
+
+        } else {
             return response()->json([
                 'status' => 'failed',
-                'message' => 'Category does not exist'
-            ], 404);
+                'message' => 'Unauthorized action only admin and owner can update',
+            ], 403);
+
         }
-
-        $blogPost['title'] = $request->input('title', $blogPost->title);
-        $blogPost['slug'] = Str::slug($request->input('title', $blogPost->title));
-        $blogPost['content'] = $request->input('content', $blogPost->content);
-        $blogPost['user_id'] = $request->input('user_id', $blogPost->user_id);
-        $blogPost['blog_category_id'] = $request->input('blog_category_id', $blogPost->blog_category_id);
-        $blogPost['excerpt'] = substr($blogPost['content'], 0, 100) . '...';
-        $blogPost['status'] = $request->input('status', $blogPost->status);
-        $blogPost->save();
-
-        // rreturn success response
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Blog post updated successfully',
-            'data' => $blogPost
-        ], 200);
-
     }
 
     public function blogImagePost(Request $request, int $id)
@@ -197,33 +218,40 @@ class BlogPostController extends Controller
                 'message' => $validatedData->errors()
             ], 422);
         }
-        
 
-           $LoggedInUser = auth()->user();
-        if ($LoggedInUser->id !== $request->integer('user_id')) {
+
+        $LoggedInUser = auth()->user();
+        // if ($LoggedInUser->id !== (int) $request->user_id) {
+        //     return response()->json([
+        //         'status' => 'failed',
+        //         'message' => 'Unauthorized action admin',
+        //         'id' => $LoggedInUser->id,
+        //     ], 403);
+        // }
+        // handle file upload
+        if ($LoggedInUser->id == $blogPost->user_id || $LoggedInUser->role == 'admin') {
+            $thumbnailPath = null;
+            if ($request->hasFile('thumbnail') && $request->file('thumbnail')->isValid()) {
+                $file = $request->file('thumbnail');
+                $fileName = time() . '_' . $file->getClientOriginalName();
+                $file->move(public_path('storage/thumbnails'), $fileName);
+                $thumbnailPath = 'storage/thumbnails/' . $fileName;
+            }
+            $blogPost['thumbnail'] = $thumbnailPath ? $thumbnailPath : $blogPost->thumbnail;
+            $blogPost->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Blog post image updated successfully',
+                'data' => $blogPost
+            ], 200);
+
+        } else {
             return response()->json([
                 'status' => 'failed',
-                'message' => 'Unauthorized action admin',
-                'id' => $LoggedInUser->id,
+                'message' => 'Unauthorized action only admin and owner can update',
             ], 403);
         }
-        // handle file upload
-         $thumbnailPath = null;
-        if ($request->hasFile('thumbnail') && $request->file('thumbnail')->isValid()) {
-            $file = $request->file('thumbnail');
-            $fileName = time() . '_' . $file->getClientOriginalName();
-            $file->move(public_path('storage/thumbnails'), $fileName);
-            $thumbnailPath = 'storage/thumbnails/' . $fileName;
-        }
-        $blogPost['thumbnail'] = $thumbnailPath ? $thumbnailPath : $blogPost->thumbnail;
-        $blogPost->save();
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Blog post image updated successfully',
-            'data' => $blogPost
-        ], 200);    
-       
     }
     /**
      * Remove the specified resource from storage.
@@ -234,15 +262,23 @@ class BlogPostController extends Controller
         $blogPost = Post::find($id);
         if (!$blogPost) {
             return response()->json([
-                'status' => 'failed',  
+                'status' => 'failed',
                 'message' => 'Blog post not found'
-            ], 404); 
-        } 
+            ], 404);
+        }
         // delete the post
+        $LoggedInUser = auth()->user();
+        if($LoggedInUser->id == $blogPost->user_id || $LoggedInUser->role == 'admin'){
         $blogPost->delete();
         return response()->json([
             'status' => 'success',
             'message' => 'Blog post deleted successfully'
-        ], 200);      
+        ], 200);
+    }else{
+        return response()->json([
+            'status' => 'failed',
+            'message' => 'Unauthorized action only admin and owner can delete',
+        ], 403);
+    }
     }
 }
