@@ -36,9 +36,7 @@ class AuthController extends Controller
         // create user
         
         $data = $request->only('name', 'email', 'password');
-        //  'name' => $request->name,
-        //     'email' => $request->email,
-        //     'password' => bcrypt($request->password),
+        
 
 
         $imagePath= null;

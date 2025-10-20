@@ -8,6 +8,7 @@ use Validator;
 use Str;
 use App\Models\Post;
 use App\Models\BlogCategory;
+use App\Models\Seo;
 
 class BlogPostController extends Controller
 {
@@ -17,7 +18,7 @@ class BlogPostController extends Controller
     public function index()
     {
         //
-        $posts = Post::get();
+        $posts = Post::with('seo')->get();
         return response()->json([
             'status' => 'success',
             'data' => $posts
@@ -36,6 +37,9 @@ class BlogPostController extends Controller
             'blog_category_id' => 'required|integer|exists:blog_categories,id',
             'user_id' => 'required|integer|exists:users,id',
             'thumbnail' => 'nullable|image|max:2048',
+            'meta_title' => 'nullable|string|max:255',
+            'meta_description' => 'nullable|string|max:255',
+            'meta_keywords' => 'nullable|string|max:255',
         ]);
 
         // --returnn fails of code
@@ -48,11 +52,12 @@ class BlogPostController extends Controller
         }
         // varify the login user
         $LoggedInUser = auth()->user();
-        if ($LoggedInUser->id !== $request->input('user_id')) {
+        if ($LoggedInUser->id !== (int) $request->input('user_id')) {
             return response()->json([
                 'status' => 'failed',
                 'message' => 'Unauthorized action admin',
                 'id' => $LoggedInUser->id,
+                'request_id' => $request->input('user_id'),
             ], 403);
         }
 
@@ -91,12 +96,31 @@ class BlogPostController extends Controller
         }
         $blogPost = Post::create($data);
 
+        $blogpost_id = $blogPost->id;
+        // create seo metadata
+        $metaData['meta_title'] = $request->input('meta_title');
+        $metaData['meta_description'] = $request->input('meta_description');
+        $metaData['meta_keywords'] = $request->input('meta_keywords');
+        $metaData['post_id'] = $blogpost_id;
+
+
+        Seo::create($metaData);
+        // return fail message if seo creation fails
+        //   return response()->json([
+        //         'status' => 'failed',
+        //         'message' => 'SEO metadata creation failed'
+        //     ], 500);
+
+
+
         return response()->json([
             'status' => 'success',
-            'message' => 'Blog post created successfully',
-            'data' => $blogPost
+            'message' => 'Blog post and SEO metadata created successfully',
+            'data' => [
+                'blog_post' => $blogPost,
+                'seo_metadata' => $metaData
+            ]
         ], 201);
-
 
     }
 
@@ -129,6 +153,9 @@ class BlogPostController extends Controller
             'status' => 'sometimes|required|in:draft,published',
             'excerpt' => 'sometimes|string|max:255',
             'user_id' => 'sometimes|required|integer|exists:users,id',
+            'meta_title' => 'nullable|string|max:255',
+            'meta_description' => 'nullable|string|max:255',
+            'meta_keywords' => 'nullable|string|max:255',
 
         ]);
 
@@ -179,6 +206,15 @@ class BlogPostController extends Controller
             $blogPost['excerpt'] = substr($blogPost['content'], 0, 100) . '...';
             $blogPost['status'] = $request->input('status', $blogPost->status);
             $blogPost->save();
+
+            // /retrieve seo metadata
+            $seodata = Seo::where('post_id', $blogPost->id)->first();
+
+            $seodata->meta_title = $request->input('meta_title', $seodata->meta_title);
+            $seodata->meta_description = $request->input('meta_description', $seodata->meta_description);
+            $seodata->meta_keywords = $request->input('meta_keywords', $seodata->meta_keywords);
+            $seodata->save();
+
 
             // rreturn success response
             return response()->json([
@@ -268,17 +304,17 @@ class BlogPostController extends Controller
         }
         // delete the post
         $LoggedInUser = auth()->user();
-        if($LoggedInUser->id == $blogPost->user_id || $LoggedInUser->role == 'admin'){
-        $blogPost->delete();
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Blog post deleted successfully'
-        ], 200);
-    }else{
-        return response()->json([
-            'status' => 'failed',
-            'message' => 'Unauthorized action only admin and owner can delete',
-        ], 403);
-    }
+        if ($LoggedInUser->id == $blogPost->user_id || $LoggedInUser->role == 'admin') {
+            $blogPost->delete();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Blog post deleted successfully'
+            ], 200);
+        } else {
+            return response()->json([
+                'status' => 'failed',
+                'message' => 'Unauthorized action only admin and owner can delete',
+            ], 403);
+        }
     }
 }
