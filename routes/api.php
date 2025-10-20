@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BlogPostController;
+use App\Http\Controllers\LikeController;
 use GuzzleHttp\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -26,7 +27,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('/categories', BlogCategoryController::class)->middleware(['role:admin']);
     Route::apiResource('/posts', BlogPostController::class)->middleware(['role:admin,author']);
     Route::post('/blog-image-post/{posts}', [BlogPostController::class, 'blogImagePost'])->name('blog-image-post')->middleware(['role:admin,author']);
+    Route::post('/like/react', [LikeController::class, 'react'])->name('react');
 });
 
 Route::get('/posts',[BlogPostController::class,'index'])->name('posts.index');
 Route::get('/categories',[BlogCategoryController::class,'index'])->name('categories.index');
+Route::get('/post/reactions/{post}', [LikeController::class, 'Reactions'])->name('post.reactions');
