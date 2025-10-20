@@ -26,17 +26,17 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
+            
         ]);
-
+  
         // check if the validation fails
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422); 
         }
         // create user
+        
         $data = $request->only('name', 'email', 'password');
-        //  'name' => $request->name,
-        //     'email' => $request->email,
-        //     'password' => bcrypt($request->password),
+        
 
 
         $imagePath= null;
@@ -85,6 +85,7 @@ class AuthController extends Controller
                 'message' => 'User successfully logged in',
                 'access_token' => $token,
                 'token_type' => 'Bearer',
+                'id' => $user->id,
             ], 200);
         // create token
     }else{
