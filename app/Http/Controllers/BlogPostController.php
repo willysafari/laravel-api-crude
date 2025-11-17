@@ -18,7 +18,7 @@ class BlogPostController extends Controller
     public function index()
     {
         //
-        $posts = Post::with('seo')->get();
+        $posts = Post::with('seo')->with('user')->latest()->get();
         return response()->json([
             'status' => 'success',
             'data' => $posts
@@ -44,11 +44,10 @@ class BlogPostController extends Controller
 
         // --returnn fails of code
         if ($validatedData->fails()) {
-            return response()->json([
-                'status' => 'failed',
-                'message' => $validatedData->errors()
-
-            ], 422);
+            return response()->json(
+                $validatedData->errors(),
+                422
+            );
         }
         // varify the login user
         $LoggedInUser = auth()->user();
@@ -118,7 +117,8 @@ class BlogPostController extends Controller
             'message' => 'Blog post and SEO metadata created successfully',
             'data' => [
                 'blog_post' => $blogPost,
-                'seo_metadata' => $metaData
+                'seo_metadata' => $metaData,
+                'user' => $blogPost->user
             ]
         ], 201);
 
@@ -127,10 +127,26 @@ class BlogPostController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
-    {
-        //
+   /**
+ * Display the specified resource.
+ */
+public function show(string $id)
+{
+    // Find the blog post with relationships
+    $blogPost = Post::with(['seo', 'user'])->find($id);
+    
+    if (!$blogPost) {
+        return response()->json([
+            'status' => 'failed',
+            'message' => 'Blog post not found'
+        ], 404);
     }
+
+    return response()->json([
+        'status' => 'success',
+        'data' => $blogPost
+    ], 200);
+}
 
     /**
      * Update the specified resource in storage.

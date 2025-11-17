@@ -26,36 +26,35 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            
+
         ]);
-  
+
         // check if the validation fails
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422); 
+            return response()->json($validator->errors(), 422);
         }
         // create user
-        
+
         $data = $request->only('name', 'email', 'password');
-        
-
-
-        $imagePath= null;
-        if ($request->hasFile('profile_picture') && $request->File('profile_picture')->isValid()){
-            $file=$request->file('profile_picture');
-            $fileName= time().'_'.$file->getClientOriginalName();
-            $file-> move(public_path('storage/profile'), $fileName);
-            $imagePath = 'storage/profile/'.$fileName;
+        $imagePath = null;
+        if ($request->hasFile('profile_picture') && $request->File('profile_picture')->isValid()) {
+            $file = $request->file('profile_picture');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('storage/profile'), $fileName);
+            $imagePath = 'storage/profile/' . $fileName;
         }
         $data['profile_picture'] = $imagePath;
-        $user = User::create($data
-           
+        $user = User::create(
+            $data
+
         );
         // return response
         return response()->json([
             'message' => 'User successfully registered',
-            'user' => $user
-        ], 201);    
-        
+            'user' => $user,
+            'token' => $user->createToken('auth_token')->plainTextToken,
+        ], 201);
+
     }
 
 
@@ -66,20 +65,20 @@ class AuthController extends Controller
             'email' => 'required|string|email|max:255',
             'password' => 'required|string|min:8',
         ]);
+
+
         // check if the validation fails
         if ($validator->fails()) {
-            return response()->json([
-                'status' => 'Failed',
-                'message' => $validator->errors(),
-            ], 422);
+            return response()->json(
+                $validator->errors(),
+                422
+            );
         }
 
         // check if the user exists
-
-        if(Auth::attempt($request->only('email', 'password'))){
+        if (Auth::attempt($request->only('email', 'password'))) {
             $user = Auth::user();
             $token = $user->createToken('auth_token')->plainTextToken;
-
             return response()->json([
                 'status' => 'Success',
                 'message' => 'User successfully logged in',
@@ -87,19 +86,19 @@ class AuthController extends Controller
                 'token_type' => 'Bearer',
                 'id' => $user->id,
             ], 200);
-        // create token
-    }else{
-        return response()->json([
-            'status' => 'Failed',
-            'message' => 'Invalid email or password',
-        ], 401);
+
+            // create token
+        } else {
+            return response()->json([
+                'email' => ['Invalid email or password'],
+            ], 401) ;
+        }
+
     }
 
-}
-
-public function profile(Request $request)
+    public function profile(Request $request)
     {
-        $user =Auth::user();
+        $user = Auth::user();
         return response()->json([
             'status' => 'Success',
             'user' => $user,
@@ -117,7 +116,7 @@ public function profile(Request $request)
             'status' => 'Success',
             'message' => 'User successfully logged out',
         ], 200);
-    }   
+    }
     public function show(string $id)
     {
         //

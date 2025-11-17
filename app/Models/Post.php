@@ -14,4 +14,8 @@ class Post extends Model
     {
         return $this->hasOne(Seo::class, 'post_id','id');
     }
+     public function user()
+     {
+        return $this->hasOne(User::class,'id','user_id');
+     }
 }

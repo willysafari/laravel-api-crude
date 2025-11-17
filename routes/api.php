@@ -40,3 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('/posts',[BlogPostController::class,'index'])->name('posts.index');
 Route::get('/categories',[BlogCategoryController::class,'index'])->name('categories.index');
 Route::get('/post/reactions/{post}', [LikeController::class, 'Reactions'])->name('post.reactions');
+Route::get('/blog/{id}',[BlogPostController::class, 'show']);
+
+
+
